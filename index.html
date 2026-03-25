@@ -84,7 +84,7 @@ button:active {
     font-size: 14px;
 }
 
-/* 📊 BARRA PROGRESO */
+/* 📊 PROGRESO */
 .progress-container {
     width: 80%;
     height: 10px;
@@ -125,21 +125,44 @@ button:active {
 
     <button id="initBtn" class="init-btn" onclick="initAudio()">Cargar sonidos</button>
 
-    <!-- Barra progreso -->
     <div id="progressContainer" class="progress-container">
         <div id="progressBar" class="progress-bar"></div>
     </div>
     <div id="progressText" class="progress-text">0%</div>
 
     <div class="grid">
-        <button class="do" onclick="play('do')">DO</button>
-        <button class="re" onclick="play('re')">RE</button>
-        <button class="mi" onclick="play('mi')">MI</button>
-        <button class="fa" onclick="play('fa')">FA</button>
-        <button class="sol" onclick="play('sol')">SOL</button>
-        <button class="la" onclick="play('la')">LA</button>
-        <button class="sib" onclick="play('sib')">SI♭</button>
-        <button class="do8" onclick="play('do8')">DO'</button>
+        <!-- BOTONES -->
+        <button class="do" 
+            onmousedown="startSound('do')" onmouseup="stopSound('do')"
+            ontouchstart="startSound('do')" ontouchend="stopSound('do')" ontouchcancel="stopSound('do')">DO</button>
+
+        <button class="re" 
+            onmousedown="startSound('re')" onmouseup="stopSound('re')"
+            ontouchstart="startSound('re')" ontouchend="stopSound('re')" ontouchcancel="stopSound('re')">RE</button>
+
+        <button class="mi" 
+            onmousedown="startSound('mi')" onmouseup="stopSound('mi')"
+            ontouchstart="startSound('mi')" ontouchend="stopSound('mi')" ontouchcancel="stopSound('mi')">MI</button>
+
+        <button class="fa" 
+            onmousedown="startSound('fa')" onmouseup="stopSound('fa')"
+            ontouchstart="startSound('fa')" ontouchend="stopSound('fa')" ontouchcancel="stopSound('fa')">FA</button>
+
+        <button class="sol" 
+            onmousedown="startSound('sol')" onmouseup="stopSound('sol')"
+            ontouchstart="startSound('sol')" ontouchend="stopSound('sol')" ontouchcancel="stopSound('sol')">SOL</button>
+
+        <button class="la" 
+            onmousedown="startSound('la')" onmouseup="stopSound('la')"
+            ontouchstart="startSound('la')" ontouchend="stopSound('la')" ontouchcancel="stopSound('la')">LA</button>
+
+        <button class="sib" 
+            onmousedown="startSound('sib')" onmouseup="stopSound('sib')"
+            ontouchstart="startSound('sib')" ontouchend="stopSound('sib')" ontouchcancel="stopSound('sib')">SI♭</button>
+
+        <button class="do8" 
+            onmousedown="startSound('do8')" onmouseup="stopSound('do8')"
+            ontouchstart="startSound('do8')" ontouchend="stopSound('do8')" ontouchcancel="stopSound('do8')">DO'</button>
     </div>
 </div>
 
@@ -147,6 +170,7 @@ button:active {
 let audioContext;
 let buffers = {};
 let loaded = false;
+let activeSources = {};
 
 async function initAudio() {
     if (loaded) return;
@@ -161,24 +185,27 @@ async function initAudio() {
     text.style.display = "block";
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    await audioContext.resume();
 
     const notes = ["do", "re", "mi", "fa", "sol", "la", "sib", "do8"];
     let loadedCount = 0;
 
-    for (let note of notes) {
-        const response = await fetch("sounds/" + note + ".mp3");
-        const arrayBuffer = await response.arrayBuffer();
-        buffers[note] = await audioContext.decodeAudioData(arrayBuffer);
+    await Promise.all(notes.map(async (note) => {
+        try {
+            const response = await fetch("./sounds/" + note + ".mp3");
+            const arrayBuffer = await response.arrayBuffer();
+            buffers[note] = await audioContext.decodeAudioData(arrayBuffer);
 
-        loadedCount++;
-
-        let progress = Math.floor((loadedCount / notes.length) * 100);
-        bar.style.width = progress + "%";
-        text.innerText = progress + "%";
-    }
+            loadedCount++;
+            let progress = Math.floor((loadedCount / notes.length) * 100);
+            bar.style.width = progress + "%";
+            text.innerText = progress + "%";
+        } catch (e) {
+            console.error("Error:", note, e);
+        }
+    }));
 
     loaded = true;
-
     text.innerText = "✔ Listo";
 
     setTimeout(() => {
@@ -187,13 +214,27 @@ async function initAudio() {
     }, 800);
 }
 
-function play(note) {
+// 🔊 mantener sonido
+function startSound(note) {
     if (!loaded) return;
 
     const source = audioContext.createBufferSource();
     source.buffer = buffers[note];
+    source.loop = true;
+
     source.connect(audioContext.destination);
     source.start(0);
+
+    activeSources[note] = source;
+}
+
+// 🔇 parar sonido
+function stopSound(note) {
+    const source = activeSources[note];
+    if (source) {
+        source.stop();
+        delete activeSources[note];
+    }
 }
 </script>
 
